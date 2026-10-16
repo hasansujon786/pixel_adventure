@@ -1,3 +1,4 @@
+import 'package:flame/flame.dart';
 import 'package:flame/extensions.dart';
 import 'package:flame/sprite.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
@@ -17,5 +18,12 @@ extension FlameAssetGenImage on AssetGenImage {
 
   Future<SpriteAnimation> loadSpriteAnimation(SpriteAnimationData data) {
     return SpriteAnimation.load(flamePath, data);
+  }
+
+  Future<SpriteAnimation> loadSpriteAnimationFromFrameData(
+    SpriteAnimationData data,
+  ) async {
+    final image = await Flame.images.load(flamePath);
+    return SpriteAnimation.fromFrameData(image, data);
   }
 }
