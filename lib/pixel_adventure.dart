@@ -10,7 +10,7 @@ class PixelAdventure extends FlameGame {
   Color backgroundColor() => const Color(0xFF211F30);
   late CameraComponent cam;
 
-  Player player = Player();
+  Player player = Player(.maskDude);
 
   @override
   FutureOr<void> onLoad() async {

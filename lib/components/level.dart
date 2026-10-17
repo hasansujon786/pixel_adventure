@@ -16,7 +16,27 @@ class Level({
   Future<void> onLoad() async {
     level = await TiledComponent.load('level_01.tmx', Vector2.all(16));
 
+    final spwanPointLayer = level.tileMap.getLayer<ObjectGroup>('Spwanpoints');
+
     add(level);
+
+    for (final spwanPoint in spwanPointLayer!.objects) {
+      switch (spwanPoint.class_) {
+        case 'Player':
+          final p = Player(
+            .ninja,
+            position: Vector2(
+              spwanPoint.x,
+              spwanPoint.y,
+            ),
+          );
+          add(p);
+          break;
+        default:
+          add(player);
+      }
+    }
+
     super.onLoad();
   }
 }
