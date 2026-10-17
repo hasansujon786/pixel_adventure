@@ -29,6 +29,6 @@
 </data>
  </layer>
  <objectgroup id="2" name="Spwanpoints">
-  <object id="4" name="Player" type="Player" x="143.829" y="225.741" width="32" height="30.2592"/>
+  <object id="4" name="Player" type="Player" x="176.904" y="272.162" width="32" height="30.2592"/>
  </objectgroup>
 </map>

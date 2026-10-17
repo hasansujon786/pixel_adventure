@@ -1,8 +1,9 @@
 import 'package:flame/components.dart';
+import 'package:flutter/services.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
 
-class Player extends SpriteAnimationGroupComponent {
+class Player extends SpriteAnimationGroupComponent with KeyboardHandler {
   final PlayerCharacter playerCharacter;
 
   Player(this.playerCharacter, {super.position, super.anchor})
@@ -11,9 +12,43 @@ class Player extends SpriteAnimationGroupComponent {
   late SpriteAnimation idleAnimation;
   late SpriteAnimation runAnimation;
 
+  PlayerDirection playerDirection = PlayerDirection.none;
+  double moveSpeed = 100;
+  Vector2 velocity = Vector2.zero();
+  bool isFacingRight = true;
+
   @override
   Future<void> onLoad() async {
     await _loadAllAniamittons();
+    super.onLoad();
+  }
+
+  @override
+  void update(dt) {
+    _updatePlayerMovement(dt);
+    super.update(dt);
+  }
+
+  @override
+  bool onKeyEvent(event, keysPressed) {
+    final isLeftKeyPressed =
+        keysPressed.contains(LogicalKeyboardKey.keyA) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowLeft);
+    final isRightKeyPressed =
+        keysPressed.contains(LogicalKeyboardKey.keyD) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowRight);
+
+    if (isLeftKeyPressed && isRightKeyPressed) {
+      playerDirection = .none;
+    } else if (isLeftKeyPressed) {
+      playerDirection = .left;
+    } else if (isRightKeyPressed) {
+      playerDirection = .right;
+    } else {
+      playerDirection = .none;
+    }
+
+    return onKeyEvent(event, keysPressed);
   }
 
   Future<void> _loadAllAniamittons() async {
@@ -25,7 +60,35 @@ class Player extends SpriteAnimationGroupComponent {
       PlayerState.running: runAnimation,
     };
 
-    current = PlayerState.running;
+    current = PlayerState.idle;
+  }
+
+  void _updatePlayerMovement(double dt) {
+    double dirX = 0.0;
+    switch (playerDirection) {
+      case .left:
+        dirX -= moveSpeed;
+        if (isFacingRight) {
+          flipHorizontallyAroundCenter();
+          isFacingRight = false;
+        }
+        current = PlayerState.running;
+        break;
+      case .right:
+        dirX += moveSpeed;
+        if (!isFacingRight) {
+          flipHorizontallyAroundCenter();
+          isFacingRight = true;
+        }
+        current = PlayerState.running;
+        break;
+      case PlayerDirection.none:
+        current = PlayerState.idle;
+        break;
+    }
+
+    velocity = Vector2(dirX, 0.0);
+    position += velocity * dt;
   }
 
   Future<SpriteAnimation> _loadAnim(AssetGenImage player, int amount) {
