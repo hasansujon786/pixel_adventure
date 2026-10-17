@@ -4,9 +4,9 @@ import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
 
 class Player extends SpriteAnimationGroupComponent with KeyboardHandler {
-  final PlayerCharacter playerCharacter;
+  final PlayerCharacter character;
 
-  Player(this.playerCharacter, {super.position, super.anchor})
+  Player({this.character = .ninja, super.position, super.anchor})
     : super(size: Vector2.all(32));
 
   late SpriteAnimation idleAnimation;
@@ -52,8 +52,8 @@ class Player extends SpriteAnimationGroupComponent with KeyboardHandler {
   }
 
   Future<void> _loadAllAniamittons() async {
-    idleAnimation = await _loadAnim(playerCharacter.idle, 11);
-    runAnimation = await _loadAnim(playerCharacter.run, 12);
+    idleAnimation = await _loadAnim(character.idle, 11);
+    runAnimation = await _loadAnim(character.run, 12);
 
     animations = {
       PlayerState.idle: idleAnimation,

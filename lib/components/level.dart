@@ -23,14 +23,8 @@ class Level({
     for (final spwanPoint in spwanPointLayer!.objects) {
       switch (spwanPoint.class_) {
         case 'Player':
-          final p = Player(
-            .ninja,
-            position: Vector2(
-              spwanPoint.x,
-              spwanPoint.y,
-            ),
-          );
-          add(p);
+          player.position = Vector2(spwanPoint.x, spwanPoint.y);
+          add(player);
           break;
         default:
           add(player);
