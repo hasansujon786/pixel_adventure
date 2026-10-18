@@ -22,6 +22,9 @@ class $AssetsImagesGen {
   $AssetsImagesBackgroundGen get background =>
       const $AssetsImagesBackgroundGen();
 
+  /// Directory path: assets/images/HUB
+  $AssetsImagesHUBGen get hub => const $AssetsImagesHUBGen();
+
   /// File path: assets/images/Hello.png
   AssetGenImage get hello => const AssetGenImage('assets/images/Hello.png');
 
@@ -46,6 +49,32 @@ class $AssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [a20Enemies, hello];
+}
+
+class $AssetsTilesGen {
+  const $AssetsTilesGen();
+
+  /// File path: assets/tiles/Pixel Adventure.tsx
+  String get pixelAdventureTsx => 'assets/tiles/Pixel Adventure.tsx';
+
+  /// File path: assets/tiles/pixel_adventure.tiled-project
+  String get pixelAdventureTiledProject =>
+      'assets/tiles/pixel_adventure.tiled-project';
+
+  /// File path: assets/tiles/pixel_adventure.tiled-session
+  String get pixelAdventureTiledSession =>
+      'assets/tiles/pixel_adventure.tiled-session';
+
+  /// File path: assets/tiles/level_01.tmx
+  String get level01 => 'assets/tiles/level_01.tmx';
+
+  /// List of all assets
+  List<String> get values => [
+    pixelAdventureTsx,
+    pixelAdventureTiledProject,
+    pixelAdventureTiledSession,
+    level01,
+  ];
 }
 
 class $AssetsImagesBackgroundGen {
@@ -89,6 +118,21 @@ class $AssetsImagesBackgroundGen {
     purple,
     yellow,
   ];
+}
+
+class $AssetsImagesHUBGen {
+  const $AssetsImagesHUBGen();
+
+  /// File path: assets/images/HUB/JoystickSplitted.png
+  AssetGenImage get joystickSplitted =>
+      const AssetGenImage('assets/images/HUB/JoystickSplitted.png');
+
+  /// File path: assets/images/HUB/SmallHandleFilledGrey.png
+  AssetGenImage get smallHandleFilledGrey =>
+      const AssetGenImage('assets/images/HUB/SmallHandleFilledGrey.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [joystickSplitted, smallHandleFilledGrey];
 }
 
 class $AssetsImagesItemsGen {
@@ -1205,6 +1249,7 @@ class $AssetsImagesItemsCheckpointsStartGen {
 
 abstract final class Assets {
   static const $AssetsImagesGen images = $AssetsImagesGen();
+  static const $AssetsTilesGen tiles = $AssetsTilesGen();
 }
 
 class AssetGenImage {

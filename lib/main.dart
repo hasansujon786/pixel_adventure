@@ -9,6 +9,15 @@ void main() async {
   await Flame.device.fullScreen();
   await Flame.device.setLandscape();
 
-  PixelAdventure game = PixelAdventure();
-  runApp(GameWidget(game: kDebugMode ? PixelAdventure() : game));
+  runApp(MyGameApp());
+}
+
+class MyGameApp extends StatelessWidget {
+  const MyGameApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    PixelAdventure game = PixelAdventure();
+    return GameWidget(game: kDebugMode ? PixelAdventure() : game);
+  }
 }
