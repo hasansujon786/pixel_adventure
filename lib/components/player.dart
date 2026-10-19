@@ -2,6 +2,7 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_blocks.dart';
+import 'package:pixel_adventure/components/player_hit_box.dart';
 import 'package:pixel_adventure/core/core.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
@@ -16,12 +17,16 @@ class Player extends SpriteAnimationGroupComponent
 
   late SpriteAnimation idleAnimation;
   late SpriteAnimation runAnimation;
+  late SpriteAnimation jumpAnimation;
+  late SpriteAnimation fallAnimation;
+
   List<CollisionBlock> collisionBlocks = [];
+  final hitbox = PlayerHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
 
   PlayerState playerState = PlayerState.idle;
 
   final _gravity = 9.8;
-  final _jumpForce = 460.0;
+  final _jumpForce = 300.0;
   final _terminalVelocity = 300.0;
 
   int _keyboardMovement = 0;
@@ -36,11 +41,18 @@ class Player extends SpriteAnimationGroupComponent
   Vector2 velocity = Vector2.zero();
   bool isFacingRight = true;
   bool isOnGround = false;
+  bool hasJumped = false;
 
   @override
   Future<void> onLoad() async {
     await _loadAllAniamittons();
     debugMode = true;
+    add(
+      RectangleHitbox(
+        position: Vector2(hitbox.offsetX, hitbox.offsetY),
+        size: Vector2(hitbox.width, hitbox.height),
+      ),
+    );
     super.onLoad();
   }
 
@@ -51,9 +63,9 @@ class Player extends SpriteAnimationGroupComponent
     }
     _updatePlayerMovement(dt);
     _updatePlayerState(dt);
-    _checkHorizontalCollision();
+    _checkHorizontalCollisions();
     _checkGravity(dt);
-    _checkVerticalCollision();
+    _checkVerticalCollisions();
     super.update(dt);
   }
 
@@ -69,6 +81,8 @@ class Player extends SpriteAnimationGroupComponent
 
     _keyboardMovement += isLeftKeyPressed ? -1 : 0;
     _keyboardMovement += isRightKeyPressed ? 1 : 0;
+
+    hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
 
     return super.onKeyEvent(event, keysPressed);
   }
@@ -94,18 +108,33 @@ class Player extends SpriteAnimationGroupComponent
   Future<void> _loadAllAniamittons() async {
     idleAnimation = await _loadAnim(character.idle, 11);
     runAnimation = await _loadAnim(character.run, 12);
+    jumpAnimation = await _loadAnim(character.jumped, 1);
+    fallAnimation = await _loadAnim(character.fall, 1);
 
     animations = {
       PlayerState.idle: idleAnimation,
       PlayerState.running: runAnimation,
+      PlayerState.jumping: jumpAnimation,
+      PlayerState.falling: fallAnimation,
     };
 
     current = PlayerState.idle;
   }
 
   void _updatePlayerMovement(double dt) {
+    if (hasJumped && isOnGround) _playerJump(dt);
+
+    // if (velocity.x > _gravity) isOnGround = false;
+
     velocity.x = horizontalMovement * moveSpeed;
     position.x += velocity.x * dt;
+  }
+
+  void _playerJump(double dt) {
+    velocity.y = -_jumpForce;
+    position.y += velocity.y * dt;
+    isOnGround = false;
+    hasJumped = false;
   }
 
   Future<SpriteAnimation> _loadAnim(AssetGenImage player, int amount) {
@@ -130,22 +159,24 @@ class Player extends SpriteAnimationGroupComponent
     // Check if moving, set running
     if (velocity.x > 0 || velocity.x < 0) playerState = .running;
 
+    if (velocity.y > 0) playerState = .falling;
+    if (velocity.y < 0) playerState = .jumping;
+
     current = playerState;
   }
 
-  void _checkHorizontalCollision() {
+  void _checkHorizontalCollisions() {
     for (final block in collisionBlocks) {
       if (!block.isPlatform) {
         if (checkCollision(this, block)) {
           if (velocity.x > 0) {
-            // handle right collision
             velocity.x = 0;
-            position.x = block.x - width;
+            position.x = block.x - hitbox.offsetX - hitbox.width;
             break;
-          } else if (velocity.x < 0) {
-            // handle left collision
+          }
+          if (velocity.x < 0) {
             velocity.x = 0;
-            position.x = block.x + block.width + width;
+            position.x = block.x + block.width + hitbox.width + hitbox.offsetX;
             break;
           }
         }
@@ -159,23 +190,28 @@ class Player extends SpriteAnimationGroupComponent
     position.y += velocity.y * dt;
   }
 
-  void _checkVerticalCollision() {
+  void _checkVerticalCollisions() {
     for (final block in collisionBlocks) {
       if (block.isPlatform) {
-      } else {
         if (checkCollision(this, block)) {
-          // if falling
           if (velocity.y > 0) {
             velocity.y = 0;
-            position.y = block.y - height;
+            position.y = block.y - hitbox.height - hitbox.offsetY;
             isOnGround = true;
             break;
           }
-
-          // if going up
+        }
+      } else {
+        if (checkCollision(this, block)) {
+          if (velocity.y > 0) {
+            velocity.y = 0;
+            position.y = block.y - hitbox.height - hitbox.offsetY;
+            isOnGround = true;
+            break;
+          }
           if (velocity.y < 0) {
             velocity.y = 0;
-            position.y = block.y + height;
+            position.y = block.y + block.height - hitbox.offsetY;
           }
         }
       }
@@ -183,7 +219,7 @@ class Player extends SpriteAnimationGroupComponent
   }
 }
 
-enum PlayerState { idle, running }
+enum PlayerState { idle, running, falling, jumping }
 
 enum PlayerDirection { left, right, none }
 
@@ -199,5 +235,30 @@ enum PlayerCharacter {
   AssetGenImage get run => switch (this) {
     ninja => Assets.images.mainCharacters.ninjaFrog.run32x32,
     maskDude => Assets.images.mainCharacters.maskDude.run32x32,
+  };
+
+  AssetGenImage get fall => switch (this) {
+    ninja => Assets.images.mainCharacters.ninjaFrog.fall32x32,
+    maskDude => Assets.images.mainCharacters.maskDude.fall32x32,
+  };
+
+  AssetGenImage get jumped => switch (this) {
+    ninja => Assets.images.mainCharacters.ninjaFrog.jump32x32,
+    maskDude => Assets.images.mainCharacters.maskDude.jump32x32,
+  };
+
+  AssetGenImage get doubleJumped => switch (this) {
+    ninja => Assets.images.mainCharacters.ninjaFrog.doubleJump32x32,
+    maskDude => Assets.images.mainCharacters.maskDude.doubleJump32x32,
+  };
+
+  AssetGenImage get hit => switch (this) {
+    ninja => Assets.images.mainCharacters.ninjaFrog.hit32x32,
+    maskDude => Assets.images.mainCharacters.maskDude.hit32x32,
+  };
+
+  AssetGenImage get walljump => switch (this) {
+    ninja => Assets.images.mainCharacters.ninjaFrog.wallJump32x32,
+    maskDude => Assets.images.mainCharacters.maskDude.wallJump32x32,
   };
 }
