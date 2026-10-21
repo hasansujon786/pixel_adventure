@@ -122,6 +122,14 @@ class Level({
             );
             add(saw);
             break;
+          case 'Checkpoint':
+            final checpoint = Checkpoint(
+              position: Vector2(spwanPoint.x, spwanPoint.y),
+              size: Vector2(spwanPoint.width, spwanPoint.height),
+            );
+            add(checpoint);
+
+            break;
           default:
         }
       }

@@ -5,3 +5,4 @@ export 'fruit.dart';
 export 'level.dart';
 export 'player.dart';
 export 'saw.dart';
+export 'checkpoint.dart';

@@ -1,6 +1,6 @@
-import 'package:pixel_adventure/components/components.dart';
+import '../../components/components.dart';
 
-bool checkCollision(player, block) {
+bool checkCollision(Player player, CollisionBlock block) {
   final hitbox = player.hitbox;
   final playerX = player.position.x + hitbox.offsetX;
   final playerY = player.position.y + hitbox.offsetY;
@@ -22,3 +22,5 @@ bool checkCollision(player, block) {
       fixedX < blockX + blockWidth &&
       fixedX + playerWidth > blockX);
 }
+
+class Util {}

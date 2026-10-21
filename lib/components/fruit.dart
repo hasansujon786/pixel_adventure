@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:pixel_adventure/components/components.dart';
+import 'package:pixel_adventure/core/core.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
 enum FruitInfo(final String path, final String displayName) {
@@ -41,7 +42,7 @@ class Fruit({final String name = 'Apple', super.position, super.size})
   @override
   FutureOr<void> onLoad() {
     priority = -1;
-    debugMode = true;
+    debugMode = false;
 
     add(
       RectangleHitbox(
@@ -50,20 +51,17 @@ class Fruit({final String name = 'Apple', super.position, super.size})
         collisionType: .passive,
       ),
     );
-    animation = _loadAnim(fruit.path, 17);
+    animation = game.images.createAnimation(fruit.path, 17);
     return super.onLoad();
   }
 
   Future<void> collidedWithPlayer() async {
     if (!_collected) {
-      animation = SpriteAnimation.fromFrameData(
-        game.images.fromCache(FruitInfo.collected.path),
-        SpriteAnimationData.sequenced(
-          amount: 6,
-          stepTime: 0.05,
-          textureSize: size,
-          loop: false,
-        ),
+      animation = game.images.createAnimation(
+        FruitInfo.collected.path,
+        6,
+        textureSize: size,
+        loop: false,
       );
       _collected = true;
 
@@ -72,16 +70,5 @@ class Fruit({final String name = 'Apple', super.position, super.size})
 
       removeFromParent();
     }
-  }
-
-  SpriteAnimation _loadAnim(String path, int amount) {
-    return SpriteAnimation.fromFrameData(
-      game.images.fromCache(path),
-      SpriteAnimationData.sequenced(
-        amount: amount,
-        stepTime: 0.05,
-        textureSize: size,
-      ),
-    );
   }
 }

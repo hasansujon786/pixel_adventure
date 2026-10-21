@@ -20,6 +20,7 @@ class Player extends SpriteAnimationGroupComponent
   late SpriteAnimation fallAnimation;
   late SpriteAnimation hitAnimatin;
   late SpriteAnimation appearingAnimating;
+  late SpriteAnimation disappearingAnimating;
 
   List<CollisionBlock> collisionBlocks = [];
   final hitbox = CustomHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
@@ -45,11 +46,13 @@ class Player extends SpriteAnimationGroupComponent
   bool isOnGround = false;
   bool hasJumped = false;
   bool gotHit = false;
+  bool reachedCheckopint = false;
 
   @override
   Future<void> onLoad() async {
+    debugMode = false;
+
     await _loadAllAniamittons();
-    debugMode = true;
     _startingPosition = Vector2(position.x, position.y);
     add(
       RectangleHitbox(
@@ -66,7 +69,7 @@ class Player extends SpriteAnimationGroupComponent
     if (game.showControlls) {
       _updateJoyStick();
     }
-    if (!gotHit) {
+    if (!gotHit && !reachedCheckopint) {
       _updatePlayerMovement(dt);
       _updatePlayerState(dt);
       _checkHorizontalCollisions();
@@ -96,11 +99,33 @@ class Player extends SpriteAnimationGroupComponent
 
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    if (other is Fruit) other.collidedWithPlayer();
-    if (other is Saw) {
-      if (!gotHit) _respawn();
+    if (!reachedCheckopint) {
+      if (other is Fruit) other.collidedWithPlayer();
+      if (other is Saw) if (!gotHit) _respawn();
+      if (other is Checkpoint) _reachedCheckpoint();
     }
+
     super.onCollision(intersectionPoints, other);
+  }
+
+  Future<void> _reachedCheckpoint() async {
+    final originalSize = size.clone();
+    size = Vector2.all(96);
+
+    if (scale.x > 0) {
+      position = position - originalSize;
+    } else if (scale.x < 0) {
+      position = position - Vector2(-originalSize.x, originalSize.y);
+    }
+
+    current = PlayerState.disappearing;
+    reachedCheckopint = true;
+    // Wait for the 'disappearing' animation to finish
+    await animationTicker?.completed;
+
+    size = originalSize;
+    position = Vector2.all(-640);
+    reachedCheckopint = false;
   }
 
   Future<void> _respawn() async {
@@ -152,15 +177,25 @@ class Player extends SpriteAnimationGroupComponent
   }
 
   Future<void> _loadAllAniamittons() async {
-    idleAnimation = _loadAnim(character.idle.flamePath, 11);
-    runAnimation = _loadAnim(character.run.flamePath, 12);
-    jumpAnimation = _loadAnim(character.jumped.flamePath, 1);
-    fallAnimation = _loadAnim(character.fall.flamePath, 1);
-    hitAnimatin = _loadAnim(character.hit.flamePath, 7, loop: false);
-    appearingAnimating = _loadAnim(
+    idleAnimation = game.images.createAnimation(character.idle.flamePath, 11);
+    runAnimation = game.images.createAnimation(character.run.flamePath, 12);
+    jumpAnimation = game.images.createAnimation(character.jumped.flamePath, 1);
+    fallAnimation = game.images.createAnimation(character.fall.flamePath, 1);
+    hitAnimatin = game.images.createAnimation(
+      character.hit.flamePath,
+      7,
+      loop: false,
+    );
+    appearingAnimating = game.images.createAnimation(
       Assets.images.mainCharacters.appearing96x96.flamePath,
       7,
-      size: 96,
+      squareSize: 96,
+      loop: false,
+    );
+    disappearingAnimating = game.images.createAnimation(
+      Assets.images.mainCharacters.desappearing96x96.flamePath,
+      7,
+      squareSize: 96,
       loop: false,
     );
 
@@ -171,6 +206,7 @@ class Player extends SpriteAnimationGroupComponent
       PlayerState.falling: fallAnimation,
       PlayerState.hit: hitAnimatin,
       PlayerState.appearing: appearingAnimating,
+      PlayerState.disappearing: disappearingAnimating,
     };
 
     current = PlayerState.idle;
@@ -190,23 +226,6 @@ class Player extends SpriteAnimationGroupComponent
     position.y += velocity.y * dt;
     isOnGround = false;
     hasJumped = false;
-  }
-
-  SpriteAnimation _loadAnim(
-    String path,
-    int amount, {
-    double size = 32,
-    bool loop = true,
-  }) {
-    return SpriteAnimation.fromFrameData(
-      game.images.fromCache(path),
-      SpriteAnimationData.sequenced(
-        amount: amount,
-        stepTime: 0.05,
-        textureSize: Vector2.all(size),
-        loop: loop,
-      ),
-    );
   }
 
   void _updatePlayerState(double dt) {
@@ -281,7 +300,15 @@ class Player extends SpriteAnimationGroupComponent
   }
 }
 
-enum PlayerState { idle, running, falling, jumping, hit, appearing }
+enum PlayerState {
+  idle,
+  running,
+  falling,
+  jumping,
+  hit,
+  appearing,
+  disappearing,
+}
 
 enum PlayerDirection { left, right, none }
 
