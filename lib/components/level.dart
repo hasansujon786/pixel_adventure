@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flame/components.dart';
+import 'package:flame/parallax.dart';
 import 'package:flame_tiled/flame_tiled.dart';
+import 'package:flutter/painting.dart';
 import 'package:pixel_adventure/components/components.dart';
+import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
@@ -33,22 +36,24 @@ class Level({
 
   void _scrollingBackground() async {
     final bgLayer = level.tileMap.getLayer('Background');
-    final tileSize = 64;
-    if (bgLayer != null) {
-      final backgroundColor = bgLayer.properties.getValue('BackgroundColor');
-      final tilesNumY = (game.size.y / tileSize).floor();
-      final tilesNumX = (game.size.x / tileSize).floor();
-
-      for (double y = 0; y <= tilesNumY; y++) {
-        for (double x = 0; x < tilesNumX; x++) {
-          final bg = BackgroundTile(
-            color: backgroundColor,
-            position: Vector2(x * tileSize, y * tileSize - tileSize),
-          );
-          add(bg);
-        }
-      }
-    }
+    final backgroundColor = bgLayer?.properties.getValue<String?>(
+      'BackgroundColor',
+    );
+    final background = ParallaxComponent(
+      priority: -1,
+      parallax: Parallax([
+        ParallaxLayer(
+          ParallaxImage(
+            game.images.fromCache(
+              GameBgTile.fromColor(backgroundColor ?? 'Blue').path,
+            ),
+            repeat: ImageRepeat.repeat,
+            fill: LayerFill.none,
+          ),
+        ),
+      ], baseVelocity: Vector2(0, -50)),
+    );
+    add(background);
   }
 
   void _addCollisions() {
@@ -90,8 +95,15 @@ class Level({
             player.position = Vector2(spwanPoint.x, spwanPoint.y);
             add(player);
             break;
+          case 'Fruit':
+            final fruit = Fruit(
+              name: spwanPoint.name,
+              position: Vector2(spwanPoint.x, spwanPoint.y),
+              size: Vector2(spwanPoint.width, spwanPoint.height),
+            );
+            add(fruit);
+            break;
           default:
-            add(player);
         }
       }
     }

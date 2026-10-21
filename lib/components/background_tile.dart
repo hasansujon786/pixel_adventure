@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flame/components.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
-enum Tile(final String path, final String name) {
+enum GameBgTile(final String path, final String name) {
   blue('Background/Blue.png', 'blue'),
   brown('Background/Brown.png', 'brown'),
   gray('Background/Gray.png', 'gray'),
@@ -12,10 +12,10 @@ enum Tile(final String path, final String name) {
   purple('Background/Purple.png', 'purple'),
   yellow('Background/Yellow.png', 'yellow');
 
-  static Tile fromColor(String colorName) {
-    return Tile.values.firstWhere(
+  static GameBgTile fromColor(String colorName) {
+    return GameBgTile.values.firstWhere(
       (tile) => tile.name == colorName.trim().toLowerCase(),
-      orElse: () => Tile.blue, // Default fallback
+      orElse: () => GameBgTile.blue, // Default fallback
     );
   }
 }
@@ -28,7 +28,7 @@ class BackgroundTile({final String color = 'Blue', super.position})
   @override
   FutureOr<void> onLoad() {
     size = Vector2.all(64.6);
-    late Tile tile = Tile.fromColor(color);
+    late GameBgTile tile = GameBgTile.fromColor(color);
     priority = -1;
     sprite = Sprite(game.images.fromCache(tile.path));
     return super.onLoad();
@@ -45,3 +45,23 @@ class BackgroundTile({final String color = 'Blue', super.position})
     super.update(dt);
   }
 }
+
+// void _mannualParalaxEffect() async {
+//   final bgLayer = level.tileMap.getLayer('Background');
+//   final tileSize = 64;
+//   if (bgLayer != null) {
+//     final backgroundColor = bgLayer.properties.getValue('BackgroundColor');
+//     final tilesNumY = (game.size.y / tileSize).floor();
+//     final tilesNumX = (game.size.x / tileSize).floor();
+//
+//     for (double y = 0; y <= tilesNumY; y++) {
+//       for (double x = 0; x < tilesNumX; x++) {
+//         final bg = BackgroundTile(
+//           color: backgroundColor,
+//           position: Vector2(x * tileSize, y * tileSize - tileSize),
+//         );
+//         add(bg);
+//       }
+//     }
+//   }
+// }

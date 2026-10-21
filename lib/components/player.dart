@@ -2,7 +2,8 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_blocks.dart';
-import 'package:pixel_adventure/components/player_hit_box.dart';
+import 'package:pixel_adventure/components/custom_hit_box.dart';
+import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/core/core.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
@@ -21,12 +22,12 @@ class Player extends SpriteAnimationGroupComponent
   late SpriteAnimation fallAnimation;
 
   List<CollisionBlock> collisionBlocks = [];
-  final hitbox = PlayerHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
+  final hitbox = CustomHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
 
   PlayerState playerState = PlayerState.idle;
 
   final _gravity = 9.8;
-  final _jumpForce = 300.0;
+  final _jumpForce = 350.0;
   final _terminalVelocity = 300.0;
 
   int _keyboardMovement = 0;
@@ -85,6 +86,12 @@ class Player extends SpriteAnimationGroupComponent
     hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
 
     return super.onKeyEvent(event, keysPressed);
+  }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if (other is Fruit) other.collidedWithPlayer();
+    super.onCollision(intersectionPoints, other);
   }
 
   void _updateJoyStick() {

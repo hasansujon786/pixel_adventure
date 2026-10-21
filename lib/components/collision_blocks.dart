@@ -8,6 +8,6 @@ class CollisionBlock extends PositionComponent {
     super.key,
     this.isPlatform = false,
   }) {
-    debugMode = true;
+    debugMode = false;
   }
 }
