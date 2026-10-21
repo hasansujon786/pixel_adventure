@@ -10,11 +10,11 @@
             "scaleInEditor": 1
         },
         "level_01.tmx": {
-            "scale": 1.298828125,
-            "selectedLayer": 0,
+            "scale": 2,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 319.9037593984963,
-                "y": 184.01203007518797
+                "x": 317.75,
+                "y": 232.5
             }
         }
     },
@@ -28,6 +28,7 @@
         "level_01.tmx"
     ],
     "project": "pixel_adventure.tiled-project",
+    "property.type": "float",
     "recentFiles": [
         "level_01.tmx",
         "Pixel Adventure.tsx"

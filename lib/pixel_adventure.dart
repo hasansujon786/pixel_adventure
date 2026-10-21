@@ -15,6 +15,10 @@ class PixelAdventure extends FlameGame
 
   late CameraComponent cam;
   late JoystickComponent joyStick = setupJoystick(images);
+  late final jumpButton = JumpButton(
+    size: Vector2.all(70),
+    margin: const EdgeInsets.only(right: 64, bottom: 64),
+  );
   final showControlls = true;
 
   Player player = Player(character: PlayerCharacter.maskDude);
@@ -43,7 +47,7 @@ class PixelAdventure extends FlameGame
     addAll([cam, world]);
 
     if (showControlls) {
-      add(joyStick);
+      addAll([joyStick, jumpButton]);
     }
   }
 }

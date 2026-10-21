@@ -1,9 +1,7 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
-import 'package:pixel_adventure/components/collision_blocks.dart';
-import 'package:pixel_adventure/components/custom_hit_box.dart';
-import 'package:pixel_adventure/components/fruit.dart';
+import 'package:pixel_adventure/components/components.dart';
 import 'package:pixel_adventure/core/core.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
@@ -20,6 +18,8 @@ class Player extends SpriteAnimationGroupComponent
   late SpriteAnimation runAnimation;
   late SpriteAnimation jumpAnimation;
   late SpriteAnimation fallAnimation;
+  late SpriteAnimation hitAnimatin;
+  late SpriteAnimation appearingAnimating;
 
   List<CollisionBlock> collisionBlocks = [];
   final hitbox = CustomHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
@@ -29,6 +29,7 @@ class Player extends SpriteAnimationGroupComponent
   final _gravity = 9.8;
   final _jumpForce = 350.0;
   final _terminalVelocity = 300.0;
+  var _startingPosition = Vector2.zero();
 
   int _keyboardMovement = 0;
   int _joystickMovement = 0;
@@ -43,17 +44,20 @@ class Player extends SpriteAnimationGroupComponent
   bool isFacingRight = true;
   bool isOnGround = false;
   bool hasJumped = false;
+  bool gotHit = false;
 
   @override
   Future<void> onLoad() async {
     await _loadAllAniamittons();
     debugMode = true;
+    _startingPosition = Vector2(position.x, position.y);
     add(
       RectangleHitbox(
         position: Vector2(hitbox.offsetX, hitbox.offsetY),
         size: Vector2(hitbox.width, hitbox.height),
       ),
     );
+    _setupButtons();
     super.onLoad();
   }
 
@@ -62,11 +66,13 @@ class Player extends SpriteAnimationGroupComponent
     if (game.showControlls) {
       _updateJoyStick();
     }
-    _updatePlayerMovement(dt);
-    _updatePlayerState(dt);
-    _checkHorizontalCollisions();
-    _checkGravity(dt);
-    _checkVerticalCollisions();
+    if (!gotHit) {
+      _updatePlayerMovement(dt);
+      _updatePlayerState(dt);
+      _checkHorizontalCollisions();
+      _checkGravity(dt);
+      _checkVerticalCollisions();
+    }
     super.update(dt);
   }
 
@@ -91,7 +97,40 @@ class Player extends SpriteAnimationGroupComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     if (other is Fruit) other.collidedWithPlayer();
+    if (other is Saw) {
+      if (!gotHit) _respawn();
+    }
     super.onCollision(intersectionPoints, other);
+  }
+
+  Future<void> _respawn() async {
+    current = PlayerState.hit;
+    gotHit = true;
+    // Wait for the 'hit' animation to finish
+    await animationTicker?.completed;
+
+    scale.x = 1;
+    final originalSize = size.clone();
+    size = Vector2.all(96);
+    position = _startingPosition - originalSize;
+    current = PlayerState.appearing;
+
+    // Reset the ticker and wait for 'appearing' to finish
+    animationTicker?.reset();
+    await animationTicker?.completed;
+
+    // Restore baseline state and unfreeze controls
+    position = _startingPosition.clone();
+    size = originalSize;
+    current = PlayerState.idle;
+    velocity = Vector2.zero();
+    gotHit = false; // Re-enables player input and physics updates
+  }
+
+  void _setupButtons() {
+    game.jumpButton.onPressed = () => hasJumped = true;
+    game.jumpButton.onReleased = () => hasJumped = false;
+    game.jumpButton.onCancelled = () => hasJumped = false;
   }
 
   void _updateJoyStick() {
@@ -113,16 +152,25 @@ class Player extends SpriteAnimationGroupComponent
   }
 
   Future<void> _loadAllAniamittons() async {
-    idleAnimation = await _loadAnim(character.idle, 11);
-    runAnimation = await _loadAnim(character.run, 12);
-    jumpAnimation = await _loadAnim(character.jumped, 1);
-    fallAnimation = await _loadAnim(character.fall, 1);
+    idleAnimation = _loadAnim(character.idle.flamePath, 11);
+    runAnimation = _loadAnim(character.run.flamePath, 12);
+    jumpAnimation = _loadAnim(character.jumped.flamePath, 1);
+    fallAnimation = _loadAnim(character.fall.flamePath, 1);
+    hitAnimatin = _loadAnim(character.hit.flamePath, 7, loop: false);
+    appearingAnimating = _loadAnim(
+      Assets.images.mainCharacters.appearing96x96.flamePath,
+      7,
+      size: 96,
+      loop: false,
+    );
 
     animations = {
       PlayerState.idle: idleAnimation,
       PlayerState.running: runAnimation,
       PlayerState.jumping: jumpAnimation,
       PlayerState.falling: fallAnimation,
+      PlayerState.hit: hitAnimatin,
+      PlayerState.appearing: appearingAnimating,
     };
 
     current = PlayerState.idle;
@@ -144,12 +192,19 @@ class Player extends SpriteAnimationGroupComponent
     hasJumped = false;
   }
 
-  Future<SpriteAnimation> _loadAnim(AssetGenImage player, int amount) {
-    return player.loadSpriteAnimationFromFrameData(
+  SpriteAnimation _loadAnim(
+    String path,
+    int amount, {
+    double size = 32,
+    bool loop = true,
+  }) {
+    return SpriteAnimation.fromFrameData(
+      game.images.fromCache(path),
       SpriteAnimationData.sequenced(
         amount: amount,
         stepTime: 0.05,
-        textureSize: Vector2.all(32),
+        textureSize: Vector2.all(size),
+        loop: loop,
       ),
     );
   }
@@ -226,7 +281,7 @@ class Player extends SpriteAnimationGroupComponent
   }
 }
 
-enum PlayerState { idle, running, falling, jumping }
+enum PlayerState { idle, running, falling, jumping, hit, appearing }
 
 enum PlayerDirection { left, right, none }
 

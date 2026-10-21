@@ -5,7 +5,6 @@ import 'package:flame/parallax.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/painting.dart';
 import 'package:pixel_adventure/components/components.dart';
-import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
@@ -102,6 +101,26 @@ class Level({
               size: Vector2(spwanPoint.width, spwanPoint.height),
             );
             add(fruit);
+            break;
+          case 'Saw':
+            final isVertical = spwanPoint.properties.getValue<bool>(
+              'isVertical',
+            );
+            final offsetNeg = spwanPoint.properties.getValue<double>(
+              'offsetNeg',
+            );
+            final offsetPos = spwanPoint.properties.getValue<double>(
+              'offsetPos',
+            );
+
+            final saw = Saw(
+              position: Vector2(spwanPoint.x, spwanPoint.y),
+              size: Vector2(spwanPoint.width, spwanPoint.height),
+              isVertical: isVertical ?? false,
+              offsetNeg: offsetNeg ?? 0,
+              offsetPos: offsetPos ?? 0,
+            );
+            add(saw);
             break;
           default:
         }
