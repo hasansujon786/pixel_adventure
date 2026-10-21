@@ -23,8 +23,9 @@ class Saw({
 
   @override
   FutureOr<void> onLoad() {
+    debugMode = true;
+
     priority = -1;
-    debugMode = false;
 
     if (isVertical == true) {
       rangeNeg = position.y - offsetNeg * tileSize;

@@ -11,6 +11,7 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 
 class Level({
   required final Player player,
+  required final String levelName,
   super.children,
   super.priority,
   super.key,
@@ -21,7 +22,7 @@ class Level({
   @override
   Future<void> onLoad() async {
     level = await TiledComponent.load(
-      Assets.tiles.flamePath(Assets.tiles.level01),
+      Assets.tiles.flamePath(levelName),
       Vector2.all(16),
     );
     add(level);

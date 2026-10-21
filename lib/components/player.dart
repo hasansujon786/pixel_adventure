@@ -126,6 +126,8 @@ class Player extends SpriteAnimationGroupComponent
     size = originalSize;
     position = Vector2.all(-640);
     reachedCheckopint = false;
+
+    game.loadNextLevel();
   }
 
   Future<void> _respawn() async {

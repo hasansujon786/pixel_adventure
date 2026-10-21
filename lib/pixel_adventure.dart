@@ -8,10 +8,15 @@ import 'package:flutter/widgets.dart';
 import 'package:pixel_adventure/components/components.dart';
 import 'package:pixel_adventure/core/core.dart';
 
+import 'gen/assets.gen.dart';
+
 class PixelAdventure extends FlameGame
     with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
   @override
   Color backgroundColor() => const Color(0xFF211F30);
+
+  int currentLevel = 0;
+  static final levels = [Assets.tiles.level01, Assets.tiles.level01];
 
   late CameraComponent cam;
   late JoystickComponent joyStick = setupJoystick(images);
@@ -33,8 +38,26 @@ class PixelAdventure extends FlameGame
     return super.onLoad();
   }
 
-  void _loadLevel() {
-    Level world = Level(player: player);
+  void loadNextLevel({int delay = 0}) {
+    if (currentLevel < levels.length - 1) {
+      currentLevel++;
+      _loadLevel(delay: delay);
+    }
+  }
+
+  void loadPrevLevel() {
+    if (currentLevel > 0) {
+      currentLevel--;
+      _loadLevel();
+    }
+  }
+
+  void _loadLevel({int delay = 0}) async {
+    if (delay > 0) {
+      await Future.delayed(Duration(milliseconds: delay));
+    }
+
+    Level world = Level(player: player, levelName: levels[currentLevel]);
 
     cam = CameraComponent.withFixedResolution(
       world: world,
