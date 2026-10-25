@@ -23,7 +23,7 @@ class Saw({
 
   @override
   FutureOr<void> onLoad() {
-    debugMode = true;
+    debugMode = false;
 
     priority = -1;
 

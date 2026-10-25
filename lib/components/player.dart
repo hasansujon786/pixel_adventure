@@ -7,241 +7,137 @@ import 'package:pixel_adventure/flame/asset_gen_image.dart';
 import 'package:pixel_adventure/gen/assets.gen.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
-class Player extends SpriteAnimationGroupComponent
+class Player({final PlayerCharacter character = .ninja, super.position, super.anchor})
+    extends SpriteAnimationGroupComponent<PlayerState>
     with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
-  final PlayerCharacter character;
+  this : super(size: Vector2.all(32));
 
-  Player({this.character = .ninja, super.position, super.anchor})
-    : super(size: Vector2.all(32));
+  // --- Collision & Hitbox Config ---
+  List<CollisionBlock> collisionBlocks = []; // Active solid blocks and platforms in level
+  final hitbox = CustomHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28); // Inner character body bounds
 
-  late SpriteAnimation idleAnimation;
-  late SpriteAnimation runAnimation;
-  late SpriteAnimation jumpAnimation;
-  late SpriteAnimation fallAnimation;
-  late SpriteAnimation hitAnimatin;
-  late SpriteAnimation appearingAnimating;
-  late SpriteAnimation disappearingAnimating;
+  // --- Physics Constants (Kinematic Units) ---
+  static const double _jumpForce = 350.0; // Instant upward impulse speed (px/s)
+  static const double _moveSpeed = 100.0; // Horizontal running speed (px/s)
+  static const double _gravity = 980.0; // Downward gravity acceleration (px/s²)
+  static const double _terminalVelocity = 300.0; // Terminal downward falling cap (px/s)
 
-  List<CollisionBlock> collisionBlocks = [];
-  final hitbox = CustomHitBox(offsetX: 10, offsetY: 4, width: 14, height: 28);
+  // --- State & Position Tracking ---
+  var _startingPosition = Vector2.zero(); // Respawn coordinate snapshot
+  Vector2 velocity = Vector2.zero(); // Current movement vector (px/s)
+  PlayerState playerState = .idle; // Active animation state key
 
-  PlayerState playerState = PlayerState.idle;
+  // --- Directional Input Accumulators ---
+  int _keyboardMovement = 0; // Key input (-1: left, 1: right)
+  int _joystickMovement = 0; // Stick input (-1: left, 1: right)
+  int get horizontalMovement => (_keyboardMovement + _joystickMovement).clamp(-1, 1);
+  set horizontalMovement(int value) => _joystickMovement = value;
 
-  final _gravity = 9.8;
-  final _jumpForce = 350.0;
-  final _terminalVelocity = 300.0;
-  var _startingPosition = Vector2.zero();
-
-  int _keyboardMovement = 0;
-  int _joystickMovement = 0;
-  int get horizontalMovement =>
-      (_keyboardMovement + _joystickMovement).clamp(-1, 1);
-  set horizontalMovement(int value) {
-    _joystickMovement = value;
-  }
-
-  double moveSpeed = 100;
-  Vector2 velocity = Vector2.zero();
-  bool isFacingRight = true;
-  bool isOnGround = false;
-  bool hasJumped = false;
-  bool gotHit = false;
-  bool reachedCheckopint = false;
+  // --- Status Flags ---
+  bool isFacingRight = true; // Horizontal sprite flip orientation
+  bool isOnGround = false; // Ground/platform contact indicator
+  bool hasJumped = false; // Jump trigger flag for physics tick
+  bool gotHit = false; // Hit/death animation lockout flag
+  bool reachedCheckpoint = false; // Level-exit animation lockout flag
 
   @override
   Future<void> onLoad() async {
     debugMode = false;
 
-    await _loadAllAniamittons();
+    await _loadAllAnimations();
     _startingPosition = Vector2(position.x, position.y);
-    add(
-      RectangleHitbox(
-        position: Vector2(hitbox.offsetX, hitbox.offsetY),
-        size: Vector2(hitbox.width, hitbox.height),
-      ),
-    );
+
+    add(RectangleHitbox(position: Vector2(hitbox.offsetX, hitbox.offsetY), size: Vector2(hitbox.width, hitbox.height)));
+
     _setupButtons();
     super.onLoad();
   }
 
+  /// Variable-time loop: input polling, HUD sync, and animation updates.
   @override
-  void update(dt) {
+  void update(double dt) {
     if (game.showControlls) {
       _updateJoyStick();
     }
-    if (!gotHit && !reachedCheckopint) {
-      _updatePlayerMovement(dt);
-      _updatePlayerState(dt);
-      _checkHorizontalCollisions();
-      _checkGravity(dt);
-      _checkVerticalCollisions();
+
+    if (!gotHit && !reachedCheckpoint) {
+      _updatePlayerVisualState();
     }
+
     super.update(dt);
+  }
+
+  /// Fixed 60Hz physics tick called from PixelAdventure._fixedPhysicsUpdate.
+  void physicsUpdate(double step) {
+    if (gotHit || reachedCheckpoint) return;
+
+    _updatePlayerHorizontalMovement(step);
+    _checkHorizontalCollisions();
+    _applyGravityAndVerticalMovement(step);
+    _checkVerticalCollisions();
   }
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
     _keyboardMovement = 0;
     final isLeftKeyPressed =
-        keysPressed.contains(LogicalKeyboardKey.keyA) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowLeft);
+        keysPressed.contains(LogicalKeyboardKey.keyA) || keysPressed.contains(LogicalKeyboardKey.arrowLeft);
     final isRightKeyPressed =
-        keysPressed.contains(LogicalKeyboardKey.keyD) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowRight);
+        keysPressed.contains(LogicalKeyboardKey.keyD) || keysPressed.contains(LogicalKeyboardKey.arrowRight);
 
     _keyboardMovement += isLeftKeyPressed ? -1 : 0;
     _keyboardMovement += isRightKeyPressed ? 1 : 0;
 
-    hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
+    if (keysPressed.contains(LogicalKeyboardKey.space)) {
+      hasJumped = true;
+    }
 
     return super.onKeyEvent(event, keysPressed);
   }
 
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    if (!reachedCheckopint) {
+    if (!reachedCheckpoint) {
       if (other is Fruit) other.collidedWithPlayer();
-      if (other is Saw) if (!gotHit) _respawn();
+      if (other is Saw && !gotHit) _respawn();
       if (other is Checkpoint) _reachedCheckpoint();
     }
-
     super.onCollision(intersectionPoints, other);
   }
 
-  Future<void> _reachedCheckpoint() async {
-    final originalSize = size.clone();
-    size = Vector2.all(96);
-
-    if (scale.x > 0) {
-      position = position - originalSize;
-    } else if (scale.x < 0) {
-      position = position - Vector2(-originalSize.x, originalSize.y);
+  void _updatePlayerHorizontalMovement(double step) {
+    if (hasJumped && isOnGround) {
+      _playerJump();
     }
 
-    current = PlayerState.disappearing;
-    reachedCheckopint = true;
-    // Wait for the 'disappearing' animation to finish
-    await animationTicker?.completed;
-
-    size = originalSize;
-    position = Vector2.all(-640);
-    reachedCheckopint = false;
-
-    game.loadNextLevel();
+    velocity.x = horizontalMovement * _moveSpeed;
+    position.x += velocity.x * step;
   }
 
-  Future<void> _respawn() async {
-    current = PlayerState.hit;
-    gotHit = true;
-    // Wait for the 'hit' animation to finish
-    await animationTicker?.completed;
-
-    scale.x = 1;
-    final originalSize = size.clone();
-    size = Vector2.all(96);
-    position = _startingPosition - originalSize;
-    current = PlayerState.appearing;
-
-    // Reset the ticker and wait for 'appearing' to finish
-    animationTicker?.reset();
-    await animationTicker?.completed;
-
-    // Restore baseline state and unfreeze controls
-    position = _startingPosition.clone();
-    size = originalSize;
-    current = PlayerState.idle;
-    velocity = Vector2.zero();
-    gotHit = false; // Re-enables player input and physics updates
-  }
-
-  void _setupButtons() {
-    game.jumpButton.onPressed = () => hasJumped = true;
-    game.jumpButton.onReleased = () => hasJumped = false;
-    game.jumpButton.onCancelled = () => hasJumped = false;
-  }
-
-  void _updateJoyStick() {
-    switch (game.joyStick.direction) {
-      case JoystickDirection.upLeft:
-      case JoystickDirection.downLeft:
-      case JoystickDirection.left:
-        _joystickMovement = -1;
-        break;
-      case JoystickDirection.upRight:
-      case JoystickDirection.downRight:
-      case JoystickDirection.right:
-        _joystickMovement = 1;
-        break;
-      default:
-        _joystickMovement = 0;
-        break;
-    }
-  }
-
-  Future<void> _loadAllAniamittons() async {
-    idleAnimation = game.images.createAnimation(character.idle.flamePath, 11);
-    runAnimation = game.images.createAnimation(character.run.flamePath, 12);
-    jumpAnimation = game.images.createAnimation(character.jumped.flamePath, 1);
-    fallAnimation = game.images.createAnimation(character.fall.flamePath, 1);
-    hitAnimatin = game.images.createAnimation(
-      character.hit.flamePath,
-      7,
-      loop: false,
-    );
-    appearingAnimating = game.images.createAnimation(
-      Assets.images.mainCharacters.appearing96x96.flamePath,
-      7,
-      squareSize: 96,
-      loop: false,
-    );
-    disappearingAnimating = game.images.createAnimation(
-      Assets.images.mainCharacters.desappearing96x96.flamePath,
-      7,
-      squareSize: 96,
-      loop: false,
-    );
-
-    animations = {
-      PlayerState.idle: idleAnimation,
-      PlayerState.running: runAnimation,
-      PlayerState.jumping: jumpAnimation,
-      PlayerState.falling: fallAnimation,
-      PlayerState.hit: hitAnimatin,
-      PlayerState.appearing: appearingAnimating,
-      PlayerState.disappearing: disappearingAnimating,
-    };
-
-    current = PlayerState.idle;
-  }
-
-  void _updatePlayerMovement(double dt) {
-    if (hasJumped && isOnGround) _playerJump(dt);
-
-    // if (velocity.x > _gravity) isOnGround = false;
-
-    velocity.x = horizontalMovement * moveSpeed;
-    position.x += velocity.x * dt;
-  }
-
-  void _playerJump(double dt) {
+  void _playerJump() {
     velocity.y = -_jumpForce;
-    position.y += velocity.y * dt;
     isOnGround = false;
     hasJumped = false;
   }
 
-  void _updatePlayerState(double dt) {
+  void _applyGravityAndVerticalMovement(double step) {
+    velocity.y += _gravity * step;
+    velocity.y = velocity.y.clamp(-_jumpForce, _terminalVelocity);
+    position.y += velocity.y * step;
+  }
+
+  void _updatePlayerVisualState() {
     playerState = .idle;
 
     if (velocity.x < 0 && scale.x > 0) {
       flipHorizontallyAroundCenter();
+      isFacingRight = false;
     } else if (velocity.x > 0 && scale.x < 0) {
       flipHorizontallyAroundCenter();
+      isFacingRight = true;
     }
 
-    // Check if moving, set running
-    if (velocity.x > 0 || velocity.x < 0) playerState = .running;
-
+    if (velocity.x != 0) playerState = .running;
     if (velocity.y > 0) playerState = .falling;
     if (velocity.y < 0) playerState = .jumping;
 
@@ -265,12 +161,6 @@ class Player extends SpriteAnimationGroupComponent
         }
       }
     }
-  }
-
-  void _checkGravity(double dt) {
-    velocity.y += _gravity;
-    velocity.y = velocity.y.clamp(-_jumpForce, _terminalVelocity);
-    position.y += velocity.y * dt;
   }
 
   void _checkVerticalCollisions() {
@@ -300,23 +190,107 @@ class Player extends SpriteAnimationGroupComponent
       }
     }
   }
+
+  Future<void> _reachedCheckpoint() async {
+    velocity = Vector2.zero();
+    final originalSize = size.clone();
+    size = Vector2.all(96);
+
+    if (scale.x > 0) {
+      position = position - originalSize;
+    } else if (scale.x < 0) {
+      position = position - Vector2(-originalSize.x, originalSize.y);
+    }
+
+    current = .disappearing;
+    reachedCheckpoint = true;
+
+    await animationTicker?.completed;
+
+    size = originalSize;
+    position = Vector2.all(-640);
+    reachedCheckpoint = false;
+
+    game.loadNextLevel();
+  }
+
+  Future<void> _respawn() async {
+    gotHit = true;
+    velocity = Vector2.zero();
+
+    current = .hit;
+    animationTicker?.reset();
+    await animationTicker?.completed;
+
+    scale.x = 1;
+    isFacingRight = true;
+    final originalSize = size.clone();
+
+    size = Vector2.all(96);
+    position = _startingPosition - (Vector2.all(96) - originalSize) / 2;
+    current = .appearing;
+
+    animationTicker?.reset();
+    await animationTicker?.completed;
+
+    position = _startingPosition.clone();
+    size = originalSize;
+    current = .idle;
+    velocity = Vector2.zero();
+    gotHit = false;
+  }
+
+  void _setupButtons() {
+    game.jumpButton.onPressed = () => hasJumped = true;
+    game.jumpButton.onReleased = () => hasJumped = false;
+    game.jumpButton.onCancelled = () => hasJumped = false;
+  }
+
+  void _updateJoyStick() {
+    switch (game.joyStick.direction) {
+      case .upLeft:
+      case .downLeft:
+      case .left:
+        _joystickMovement = -1;
+        break;
+      case .upRight:
+      case .downRight:
+      case .right:
+        _joystickMovement = 1;
+        break;
+      default:
+        _joystickMovement = 0;
+        break;
+    }
+  }
+
+  Future<void> _loadAllAnimations() async {
+    // dart format off
+    animations = {
+      .idle: game.images.createAnimation(character.idle.flamePath, 11),
+      .running: game.images.createAnimation(character.run.flamePath, 12),
+      .jumping: game.images.createAnimation(character.jumped.flamePath, 1),
+      .falling: game.images.createAnimation(character.fall.flamePath, 1),
+      .hit: game.images.createAnimation(character.hit.flamePath, 7, loop: false),
+      .appearing: game.images.createAnimation(PlayerCharacter.appearing.flamePath, 7, squareSize: 96, loop: false),
+      .disappearing: game.images.createAnimation(PlayerCharacter.desappearing.flamePath, 7, squareSize: 96, loop: false),
+    };
+    // dart format on
+
+    current = .idle;
+  }
 }
 
-enum PlayerState {
-  idle,
-  running,
-  falling,
-  jumping,
-  hit,
-  appearing,
-  disappearing,
-}
+enum PlayerState { idle, running, falling, jumping, hit, appearing, disappearing }
 
 enum PlayerDirection { left, right, none }
 
 enum PlayerCharacter {
   ninja,
   maskDude;
+
+  static final appearing = Assets.images.mainCharacters.appearing96x96;
+  static final desappearing = Assets.images.mainCharacters.desappearing96x96;
 
   AssetGenImage get idle => switch (this) {
     ninja => Assets.images.mainCharacters.ninjaFrog.idle32x32,

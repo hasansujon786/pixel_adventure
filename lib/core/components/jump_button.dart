@@ -10,6 +10,8 @@ class JumpButton extends HudButtonComponent {
 
   @override
   FutureOr<void> onLoad() {
+    priority = 10;
+
     // Normal / unpressed state
     button = SpriteComponent(
       sprite: Sprite(
