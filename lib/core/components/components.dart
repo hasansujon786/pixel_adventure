@@ -1,2 +1,2 @@
 export 'joystick.dart';
-export 'dpad_button.dart';
+export 'jump_button.dart';
